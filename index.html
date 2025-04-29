@@ -1,113 +1,83 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>QR Attendance Form</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Attendance</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.9/html5-qrcode.min.js"></script>
     <style>
-        .error {
-            color: red;
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
         }
-        .success {
-            color: green;
+        #qr-reader {
+            width: 300px;
+            margin: 0 auto;
         }
     </style>
 </head>
 <body>
-    <h2>Attendance Form</h2>
-    <form id="attendance-form">
-        <label for="name">Name:</label><br>
-        <input type="text" name="name" required><br><br>
-
-        <label for="student_id">Student ID:</label><br>
-        <input type="text" name="student_id" required><br><br>
-
-        <input type="hidden" name="lat">
-        <input type="hidden" name="lng">
-
-        <button type="submit">Submit Attendance</button>
-    </form>
-
-    <p id="status"></p>
+    <h1>QR Code Attendance System</h1>
+    <p id="status">Allow location access to verify your presence.</p>
+    <div id="qr-reader"></div>
 
     <script>
-        const form = document.getElementById('attendance-form');
-        const status = document.getElementById('status');
-        const schoolLatitude = 13.784102121507896;
-        const schoolLongitude = 121.07438276064075;
-        const allowedDistance = 0.001; // Approximately 111 meters (adjust as needed)
+        const targetLat = 13.784102121507896;
+        const targetLng = 121.07438276064075;
+        const locationThreshold = 0.001; // ~111 meters
 
-        function distance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Radius of the earth in km
-            const dLat = deg2rad(lat2 - lat1);
-            const dLon = deg2rad(lon2 - lon1);
-            const a =
-                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            const d = R * c; // Distance in km
-            return d;
-        }
+        // Function to check user's location
+        function checkLocation(successCallback) {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const userLat = position.coords.latitude;
+                        const userLng = position.coords.longitude;
+                        const isWithinLocation =
+                            Math.abs(userLat - targetLat) <= locationThreshold &&
+                            Math.abs(userLng - targetLng) <= locationThreshold;
 
-        function deg2rad(deg) {
-            return deg * (Math.PI / 180)
-        }
-
-        function checkLocationAndSubmit(position) {
-            const currentLatitude = position.coords.latitude;
-            const currentLongitude = position.coords.longitude;
-
-            const dist = distance(currentLatitude, currentLongitude, schoolLatitude, schoolLongitude);
-
-            if (dist <= allowedDistance) {
-                document.querySelector('[name="lat"]').value = currentLatitude;
-                document.querySelector('[name="lng"]').value = currentLongitude;
-
-                const formData = new FormData(form);
-                fetch('https://script.google.com/macros/s/AKfycbzU-AoAbi-x1W1rz3B24X3f_lzxXOt2ctNzRRyZZVQvvN-H2oRwixZ00YCJKdIQwH9HxA/exec', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(res => res.text())
-                .then(txt => {
-                    status.textContent = txt;
-                    status.className = 'success';
-                })
-                .catch(err => {
-                    status.textContent = 'Error submitting attendance. Please try again.';
-                    status.className = 'error';
-                });
+                        if (isWithinLocation) {
+                            document.getElementById("status").innerText = "You are within the allowed location.";
+                            successCallback();
+                        } else {
+                            document.getElementById("status").innerText = "You are not in the allowed location.";
+                        }
+                    },
+                    (error) => {
+                        document.getElementById("status").innerText = "Failed to get location. Please enable location services.";
+                    }
+                );
             } else {
-                status.textContent = '⚠️ You must be within the school premises to submit attendance.';
-                status.className = 'error';
+                document.getElementById("status").innerText = "Geolocation is not supported by your browser.";
             }
         }
 
-        function handleLocationError(error) {
-            let errorMessage = "⚠️ Error getting your location. Please ensure location services are enabled.";
-            switch(error.code) {
-                case error.PERMISSION_DENIED:
-                    errorMessage = "⚠️ Location access was denied. Please allow it to submit attendance.";
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    errorMessage = "⚠️ Location information is unavailable.";
-                    break;
-                case error.TIMEOUT:
-                    errorMessage = "⚠️ The request to get user location timed out.";
-                    break;
-                case error.UNKNOWN_ERROR:
-                    errorMessage = "⚠️ An unknown error occurred while getting your location.";
-                    break;
-            }
-            status.textContent = errorMessage;
-            status.className = 'error';
+        // Initialize QR code scanner
+        function initializeQRScanner() {
+            const qrReader = new Html5Qrcode("qr-reader");
+
+            qrReader.start(
+                { facingMode: "environment" },
+                {
+                    fps: 10,
+                    qrbox: 250,
+                },
+                (decodedText) => {
+                    alert(QR Code Scanned: ${decodedText});
+                    qrReader.stop();
+                },
+                (errorMessage) => {
+                    console.error(errorMessage);
+                }
+            ).catch((err) => {
+                console.error("Failed to start QR code scanner.", err);
+            });
         }
 
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            status.textContent = 'Checking location...';
-            status.className = '';
-            navigator.geolocation.getCurrentPosition(checkLocationAndSubmit, handleLocationError);
-        });
+        // Check location first before starting QR scanner
+        checkLocation(initializeQRScanner);
     </script>
 </body>
 </html>
