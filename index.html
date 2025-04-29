@@ -64,8 +64,27 @@
                     fps: 10,
                     qrbox: 250,
                 },
-                (decodedText) => {
+                async (decodedText) => {
                     alert(QR Code Scanned: ${decodedText});
+
+                    // Send data to Google Sheets
+                    await fetch('https://script.google.com/macros/s/AKfycbzU-AoAbi-x1W1rz3B24X3f_lzxXOt2ctNzRRyZZVQvvN-H2oRwixZ00YCJKdIQwH9HxA/exec', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ qrData: decodedText }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.result === 'success') {
+                            alert('Attendance recorded successfully!');
+                        } else {
+                            alert('Failed to record attendance.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+
                     qrReader.stop();
                 },
                 (errorMessage) => {
