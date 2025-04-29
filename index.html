@@ -26,6 +26,7 @@
         const targetLat = 13.784102121507896;
         const targetLng = 121.07438276064075;
         const locationThreshold = 0.001; // ~111 meters
+        const validSRCodes = ["24-06268", "24-09383", "24-09546", "24-01284"];
 
         // Function to check user's location
         function checkLocation(successCallback) {
@@ -65,27 +66,31 @@
                     qrbox: 250,
                 },
                 async (decodedText) => {
-                    alert(QR Code Scanned: ${decodedText});
+                    if (validSRCodes.includes(decodedText.trim())) {
+                        alert(QR Code Scanned: ${decodedText}\nAttendance recorded successfully!);
 
-                    // Send data to Google Sheets
-                    await fetch('https://script.google.com/macros/s/AKfycbzU-AoAbi-x1W1rz3B24X3f_lzxXOt2ctNzRRyZZVQvvN-H2oRwixZ00YCJKdIQwH9HxA/exec', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ qrData: decodedText }),
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.result === 'success') {
-                            alert('Attendance recorded successfully!');
-                        } else {
-                            alert('Failed to record attendance.');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                    });
+                        // Send data to Google Sheets
+                        await fetch('https://script.google.com/macros/s/AKfycbzU-AoAbi-x1W1rz3B24X3f_lzxXOt2ctNzRRyZZVQvvN-H2oRwixZ00YCJKdIQwH9HxA/exec', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ qrData: decodedText }),
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.result === 'success') {
+                                alert('Attendance logged in Google Sheets!');
+                            } else {
+                                alert('Failed to record attendance in Google Sheets.');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                        });
 
-                    qrReader.stop();
+                        qrReader.stop();
+                    } else {
+                        alert("Invalid SR Code. Access Denied.");
+                    }
                 },
                 (errorMessage) => {
                     console.error(errorMessage);
